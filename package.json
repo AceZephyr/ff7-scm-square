@@ -1,24 +1,34 @@
 {
-  "name": "nodegui-starter",
+  "name": "ff7-speed-square",
   "version": "1.0.0",
   "main": "index.js",
-  "author": "Atul R <atulanand94@gmail.com>",
+  "author": "mav <maciej@trebacz.org>",
   "license": "MIT",
   "private": true,
   "scripts": {
     "build": "webpack --mode production",
+    "package": "nodegui-packer --pack ./dist",
     "start": "webpack && qode ./dist/index.js",
-    "debug": "webpack && qode --inspect ./dist/index.js"
+    "debug": "webpack && qode --inspect ./dist/index.js",
+    "test": "jest"
   },
   "dependencies": {
-    "@nodegui/nodegui": "^0.36.0"
+    "@nodegui/nodegui": "^0.36.0",
+    "@types/throttle-debounce": "^5.0.0",
+    "env-paths": "^3.0.0",
+    "memoryjs": "^3.5.1",
+    "throttle-debounce": "^5.0.0",
+    "vue": "^3.2.31"
   },
   "devDependencies": {
-    "@nodegui/packer": "^1.4.1",
+    "@nodegui/packer": "^1.5.0",
+    "@types/jest": "^27.4.1",
     "@types/node": "^16.4.13",
     "clean-webpack-plugin": "^3.0.0",
     "file-loader": "^6.2.0",
+    "jest": "^27.5.1",
     "native-addon-loader": "^2.0.1",
+    "ts-jest": "^27.1.3",
     "ts-loader": "^9.2.5",
     "typescript": "^4.3.5",
     "webpack": "^5.49.0",

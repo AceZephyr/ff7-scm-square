@@ -1,4 +1,7 @@
 node_modules
 dist/
+build/
+deploy
 *.log
 .vscode
+.DS_Store
