@@ -49,6 +49,10 @@ export class OpcodeWriter {
       }
     }
   
+    writeStart() {
+      this.write([0x55, 0x8B, 0xEC]) // PUSH EBP; MOV EBP,ESP
+    }
+
     writeReturn() {
       this.write([0x5D, 0xC3]) // POP EBP ; RET
     }

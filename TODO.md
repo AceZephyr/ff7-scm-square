@@ -28,5 +28,6 @@
   * - Battle module
 * √ Inserting set Battle RNG seed
   * seed is stored in rand() function, uses tls->randomState variable
-* Inserting a random Battle RNG seed
+* √ Inserting a random Battle RNG seed
+* √ Make sure not to inject seed into the game if we're loading a save
 * √ Displaying a message on the title screen with info

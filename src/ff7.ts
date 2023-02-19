@@ -19,8 +19,13 @@ export enum FF7Address {
   FieldFPSValue = 0xCFF890,
   FieldFPSLimiterSet = 0x60E425,
   MenuStartNilFunction = 0x721306,
+  MenuStartDrawBusterFn = 0x721840,
+  MenuStartDrawBusterAddr = 0x7224D7,
+  MenuStartNewGameAddr = 0x7222A4,
+  MenuSetIsOpenFn = 0x6CDC09,
   StoreRngSeed = 0x7AE9B0,
   CustomStartFunction = 0x6CCDA5,
+  SpeedSquareTextAddr = 0x6CCEA5,
   CurrentModule = 0xCBF9DC,
   DrawText = 0x6F5b03,
   RngSeedParam = 0x6CCDBE,
@@ -35,6 +40,12 @@ export class FF7 {
   // If the app was just launched and the game was already running we
   // skip the initialization timeout to connect to the game faster
   private firstCheck = true;
+
+  // Battle RNG Seed memory location
+  public battleRNGSeedAddr = 0;
+  
+  // RNG Seed setting function
+  private battleRNGSeedSetFn = 0;
 
   LOOP_INTERVAL_MS = 100;
 
@@ -99,21 +110,45 @@ export class FF7 {
     const nops = Buffer.from(new Array(21).fill(0x90))
     await this.writeMemory(FF7Address.FieldFPSLimiterSet, nops, DataType.buffer)
 
-    // Patch the MenuStart function to call our custom function
-    let writer = new OpcodeWriter(FF7Address.MenuStartNilFunction)
+    // Patch the MenuStartLoop function to call our 1st custom function
+    let writer = new OpcodeWriter(FF7Address.MenuStartDrawBusterFn)
     writer.writeCall(FF7Address.CustomStartFunction)
-    await this.writeMemory(FF7Address.MenuStartNilFunction, writer.toBuffer(), DataType.buffer)
+    await this.writeMemory(FF7Address.MenuStartDrawBusterFn, writer.toBuffer(), DataType.buffer)
 
+    // Store SpeedSquare text FF7-encoded in memory
     const encodedText = encodeText("SpeedSquare is active")
-    const encodedTextAddress = FF7Address.CustomStartFunction + 50
+    const encodedTextAddress = FF7Address.SpeedSquareTextAddr
     await this.writeMemory(encodedTextAddress, encodedText, DataType.buffer)
 
+    // First custom function - display SpeedSquare text on the new game screen
     const functionStart = FF7Address.CustomStartFunction + 3
     writer = new OpcodeWriter(functionStart) // skipping initial 2 opcodes
-    writer.writeCall(FF7Address.DrawText, [10, 10, encodedTextAddress, 6, 0])
+    writer.writeCall(FF7Address.DrawText, [10, 13, encodedTextAddress, 6, 0])
+    writer.writeCall(FF7Address.MenuStartDrawBusterAddr)
+    writer.writeReturn()
+
+    // Second custom function - write battle RNG seed when new game starts
+    this.battleRNGSeedSetFn = writer.offset
+    writer.writeStart()
     writer.writeCall(FF7Address.StoreRngSeed, [2048]) // the argument here is a placeholder to be replaced at runtime
+    this.battleRNGSeedAddr = writer.offset - 12
+    writer.writeCall(FF7Address.MenuSetIsOpenFn, [0])
     writer.writeReturn()
     await this.writeMemory(functionStart, writer.toBuffer(), DataType.buffer)
+  }
+
+  // Patch the MenuStartLoop function to call our 2st custom function
+  async applyRNGSeedPatch() {
+    const writer = new OpcodeWriter(FF7Address.MenuStartNewGameAddr) 
+    writer.writeCall(this.battleRNGSeedSetFn, [0])
+    await this.writeMemory(FF7Address.MenuStartNewGameAddr, writer.toBuffer(), DataType.buffer)
+  }
+  
+  // Revert the MenuStartLoop patch
+  async revertRNGSeedPatch() {
+    const writer = new OpcodeWriter(FF7Address.MenuStartNewGameAddr) 
+    writer.writeCall(FF7Address.MenuSetIsOpenFn, [0])
+    await this.writeMemory(FF7Address.MenuStartNewGameAddr, writer.toBuffer(), DataType.buffer)
   }
 
   connect() {

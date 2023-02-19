@@ -1,6 +1,7 @@
 import { QApplication, QMainWindow, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, FocusPolicy, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
 
 const VERSION = '1.0';
+export const SLIDER_MAX_VALUE = 200;
 
 type FPSWidgetGroup = {
   input?: QLineEdit,
@@ -95,7 +96,7 @@ function createFPSSettingsLine(layout: QGridLayout, label: string, row: number, 
   const sliderWidget = new QSlider();
   sliderWidget.setOrientation(Orientation.Horizontal);
   sliderWidget.setTracking(true);
-  sliderWidget.setRange(0, 200);
+  sliderWidget.setRange(0, SLIDER_MAX_VALUE);
   sliderWidget.setTickPosition(TickPosition.TicksBelow);
   layout.addWidget(sliderWidget, row, 2);
   widgetGroup.slider = sliderWidget;

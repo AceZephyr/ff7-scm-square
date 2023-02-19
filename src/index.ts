@@ -1,5 +1,5 @@
 import { QApplication, SliderAction } from '@nodegui/nodegui';
-import { createMainWindow, MainWindow, updateStatus } from './ui/main-window';
+import { createMainWindow, MainWindow, SLIDER_MAX_VALUE, updateStatus } from './ui/main-window';
 import { watch } from 'vue';
 import { RngMode, state } from './state';
 import { Configuration } from './configuration';
@@ -18,7 +18,11 @@ const mapModules = (cb: (type: GameModule) => void) =>
 
 function updateFPSUI(win: MainWindow, type: GameModule) {
   win.fps[type].slider?.setSliderPosition(state.fps[type].value);
-  win.fps[type].input?.setText(state.fps[type].value + '');
+  console.log("State value: " + state.fps[type].value)
+  console.log("Input value: " + win.fps[type].input?.text())
+  if (state.fps[type].value !== parseInt(win.fps[type].input?.text() || '0')) {
+    win.fps[type].input?.setText(state.fps[type].value + '');
+  }
   win.fps[type].auto?.setChecked(state.fps[type].auto);
   win.fps[type].slider?.setEnabled(!state.fps[type].auto);
   win.fps[type].input?.setEnabled(!state.fps[type].auto);
@@ -65,11 +69,25 @@ function loadConfig() {
 }
 
 async function writeRNGSeed() {
-  if (state.rng.seed) {
-    await ff7.writeMemory(FF7Address.RngSeedParam, parseInt(state.rng.seed), DataType.int);
-    const text = encodeText(`SpeedSquare is active. RNG Seed: ${parseInt(state.rng.seed)}`)
-    await ff7.writeMemory(FF7Address.CustomStartFunction + 50, text, DataType.buffer);
-    console.log("Updated RNG Seed", state.rng.seed)
+  if (state.rng.inject) {
+    await ff7.applyRNGSeedPatch()
+    if (state.rng.mode === RngMode.set && state.rng.seed !== '') {
+      await ff7.writeMemory(ff7.battleRNGSeedAddr, parseInt(state.rng.seed), DataType.int);
+      const text = encodeText(`SpeedSquare is active. Set Seed: ${parseInt(state.rng.seed)}`)
+      await ff7.writeMemory(FF7Address.SpeedSquareTextAddr, text, DataType.buffer);
+      console.log("Set Seed mode active, seed:", state.rng.seed)
+    } else if (state.rng.mode === RngMode.random) {
+      const randomSeed = Math.floor(Math.random() * 0x7FFF)
+      await ff7.writeMemory(ff7.battleRNGSeedAddr, randomSeed, DataType.int);
+      const text = encodeText(`SpeedSquare is active. Random Seed: ${randomSeed}`)
+      await ff7.writeMemory(FF7Address.SpeedSquareTextAddr, text, DataType.buffer);
+      console.log("Random seed mode active, seed:", randomSeed)
+    }
+  } else {
+    await ff7.revertRNGSeedPatch()
+    const text = encodeText(`SpeedSquare is active. Seed not injected.`)
+    await ff7.writeMemory(FF7Address.SpeedSquareTextAddr, text, DataType.buffer);
+    console.log("No RNG seed injected")
   }
 }
 
@@ -78,6 +96,14 @@ function setupListeners(win: MainWindow) {
   mapModules(type => {
     win.fps[type].slider?.addEventListener('valueChanged', value => {
       state.fps[type].value = value
+    });
+    win.fps[type].input?.addEventListener('textChanged', value => {
+      let number = parseInt(value.trim())
+      if (/^\d+$/.test(value.trim())) {
+        if (number < 0) number = 0
+        if (number > SLIDER_MAX_VALUE) number = SLIDER_MAX_VALUE
+        state.fps[type].value = number
+      }
     });
     win.fps[type].auto?.addEventListener('toggled', value => {state.fps[type].auto = value});
   });
