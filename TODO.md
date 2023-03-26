@@ -25,9 +25,13 @@
 * √ Manual FPS setting:
   * √ Field module
   * - World module
-  * - Battle module
+  * √ Battle module
 * √ Inserting set Battle RNG seed
   * seed is stored in rand() function, uses tls->randomState variable
 * √ Inserting a random Battle RNG seed
 * √ Make sure not to inject seed into the game if we're loading a save
 * √ Displaying a message on the title screen with info
+* √ Add the tweaks section again (battle swirl fix, disable auto-pause when unfocused)
+  √ Make sure we have a mechanism to roll back the patches
+* √ Change the slider range to be 0-1000
+* BUG: Random seed changes when changing any of the UI controls

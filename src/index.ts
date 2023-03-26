@@ -35,9 +35,9 @@ function updateUI(win: MainWindow) {
   mapModules(type => updateFPSUI(win, type));
 
   // Tweaks Group 
-  // win.tweaks.battleSwirlCheck?.setChecked(state.tweaks.battleSwirlFpsCap);
+  win.tweaks.battleSwirlCheck?.setChecked(state.tweaks.battleSwirlFpsCap);
   // win.tweaks.menusCheck?.setChecked(state.tweaks.menusFpsCap);
-  // win.tweaks.pauseCheck?.setChecked(state.tweaks.disablePauseWhenUnfocused);
+  win.tweaks.pauseCheck?.setChecked(state.tweaks.disablePauseWhenUnfocused);
 
   // RNG Group
   win.rng.injectSeedGroupBox?.setChecked(state.rng.inject);
@@ -47,13 +47,14 @@ function updateUI(win: MainWindow) {
   win.rng.setSeedInput?.setText(state.rng.seed);
 }
 
-const debouncedFF7Update = debounce(1000, updateFF7Values);
+const debouncedFF7Update = debounce(250, updateFF7Values);
 
 function setupWatchers(win: MainWindow) {
   watch(() => state, () => {
     updateUI(win);
     updateStatus(state.app?.connected);
     debouncedFF7Update(); 
+    updateFF7ValuesImmediate();
   }, {deep: true})
 }
 
@@ -85,7 +86,7 @@ async function writeRNGSeed() {
     }
   } else {
     await ff7.revertRNGSeedPatch()
-    const text = encodeText(`SpeedSquare is active. Seed not injected.`)
+    const text = encodeText(`SpeedSquare is active. Default RNG Seed.`)
     await ff7.writeMemory(FF7Address.SpeedSquareTextAddr, text, DataType.buffer);
     console.log("No RNG seed injected")
   }
@@ -109,15 +110,15 @@ function setupListeners(win: MainWindow) {
   });
 
   // Tweaks group
-  // win.tweaks.battleSwirlCheck?.addEventListener('toggled', value => {
-  //   state.tweaks.battleSwirlFpsCap = value;
-  // });
+  win.tweaks.battleSwirlCheck?.addEventListener('toggled', value => {
+    state.tweaks.battleSwirlFpsCap = value;
+  });
   // win.tweaks.menusCheck?.addEventListener('toggled', value => {
   //   state.tweaks.menusFpsCap = value;
   // });
-  // win.tweaks.pauseCheck?.addEventListener('toggled', value => {
-  //   state.tweaks.disablePauseWhenUnfocused = value;
-  // });
+  win.tweaks.pauseCheck?.addEventListener('toggled', value => {
+    state.tweaks.disablePauseWhenUnfocused = value;
+  });
 
   // RNG group
   win.rng.injectSeedGroupBox?.addEventListener('toggled', value => {
@@ -141,21 +142,47 @@ function setupListeners(win: MainWindow) {
   })
 }
 
-async function updateFF7Values() {
-  // Skip if game is not running
-  if (!state.app?.connected) return;
-
-  const initialFPS = 333000;
-  const userFPS = state.fps.field.value;
-  const fpsValue = userFPS / 100 - 1; // clamps the value to -1 ... 1
-  const targetFPS = initialFPS - (300000 * fpsValue);
+async function updateFPS(address: number, value: number, initial: number, subtract: number) {
+  const initialFPS = initial;
+  const userFPS = value;
+  const fpsValue = userFPS / (SLIDER_MAX_VALUE / 2) - 1; // clamps the value to -1 ... 1
+  const targetFPS = initialFPS - (subtract * fpsValue);
   try {
-    await ff7.writeMemory(FF7Address.FieldFPSValue, targetFPS, DataType.double);
+    await ff7.writeMemory(address, targetFPS, DataType.double);
     console.log("FF7 Values updated", fpsValue)
     await writeRNGSeed();
   } catch(e) {
     console.error("Error while writing memory: ")
     console.error(e);
+  }
+}
+
+async function updateFF7Values() {
+  // Skip if game is not running
+  if (!state.app?.connected) return;
+
+  await updateFPS(FF7Address.FieldFPSValue, state.fps.field.value, 333000, 300000)
+  await updateFPS(FF7Address.BattleFPSValue, state.fps.battle.value, 666000, 630000)
+}
+
+async function updateFF7ValuesImmediate() {
+  // Skip if game is not running
+  if (!state.app?.connected) return;
+
+  if (state.tweaks.battleSwirlFpsCap) {
+    ff7.startTransaction('battleSwirl');
+    await ff7.patchBattleSwirl();
+    ff7.stopTransaction();
+  } else {
+    await ff7.rollbackTransaction('battleSwirl');
+  }
+
+  if (state.tweaks.disablePauseWhenUnfocused) {
+    ff7.startTransaction('disablePause');
+    await ff7.patchWindowUnfocus();
+    ff7.stopTransaction();
+  } else {
+    await ff7.rollbackTransaction('disablePause');
   }
 }
 

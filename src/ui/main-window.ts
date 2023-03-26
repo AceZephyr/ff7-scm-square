@@ -1,7 +1,8 @@
-import { QApplication, QMainWindow, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, FocusPolicy, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
+import { QApplication, QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, FocusPolicy, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
+import path from 'path'
 
-const VERSION = '1.0';
-export const SLIDER_MAX_VALUE = 200;
+const VERSION = '1.1.1';
+export const SLIDER_MAX_VALUE = 1000;
 
 type FPSWidgetGroup = {
   input?: QLineEdit,
@@ -51,6 +52,10 @@ function createWindow() {
   mainWindow.statusbar.setSizeGripEnabled(false);
   mainWindow.win.setStatusBar(mainWindow.statusbar);
   updateStatus(false);
+
+  const iconPath = path.resolve(__dirname, "speed-square-icon.png")
+  const icon = new QIcon(iconPath)
+  mainWindow.win.setWindowIcon(icon)
 
   mainWindow.win.setStyleSheet(
     `
@@ -121,7 +126,13 @@ function createFPSSettingsGroup() {
 
   createFPSSettingsLine(groupBoxLayout, "Field", 0, 30, mainWindow.fps.field);
   // createFPSSettingsLine(groupBoxLayout, "World", 1, 30, mainWindow.fps.world);
-  // createFPSSettingsLine(groupBoxLayout, "Battle", 2, 15, mainWindow.fps.battle);
+  createFPSSettingsLine(groupBoxLayout, "Battle", 2, 15, mainWindow.fps.battle);
+  
+  const labelWidget = new QLabel();
+  labelWidget.setText("500 is the default. Less than 500 is slower, more than 500 is faster");
+  labelWidget.setAlignment(AlignmentFlag.AlignCenter);
+  labelWidget.setInlineStyle("color: gray;")
+  groupBoxLayout.addWidget(labelWidget, 3, 0, undefined, 3);
 }
 
 function createGameTweaksGroup() {
@@ -139,12 +150,12 @@ function createGameTweaksGroup() {
   groupBoxLayout.addWidget(checkBattleSwirlFPS);
   mainWindow.tweaks.battleSwirlCheck = checkBattleSwirlFPS;
 
-  const checkMenuFPS = new QCheckBox();
-  checkMenuFPS.setObjectName("checkMenuFPS");
-  checkMenuFPS.setText("Cap menus to 60 FPS");
-  checkMenuFPS.setInlineStyle("color: black;")
-  groupBoxLayout.addWidget(checkMenuFPS);
-  mainWindow.tweaks.menusCheck = checkMenuFPS;
+  // const checkMenuFPS = new QCheckBox();
+  // checkMenuFPS.setObjectName("checkMenuFPS");
+  // checkMenuFPS.setText("Cap menus to 60 FPS");
+  // checkMenuFPS.setInlineStyle("color: black;")
+  // groupBoxLayout.addWidget(checkMenuFPS);
+  // mainWindow.tweaks.menusCheck = checkMenuFPS;
 
   const checkDisablePausing = new QCheckBox();
   checkDisablePausing.setObjectName("checkDisablePausing");
@@ -209,7 +220,7 @@ export function createMainWindow() {
   createWindow();
   createRoot();
   createFPSSettingsGroup();
-  // createGameTweaksGroup();
+  createGameTweaksGroup();
   createInjectSeedGroup();
   createButtons();
 
