@@ -29,6 +29,16 @@ export class OpcodeWriter {
         this.write(value)
       }
     }
+
+    writeDummyCall(args = 0) {
+      this.write([0x90, 0x90, 0x90, 0x90, 0x90]) // NOP x5
+      if (args > 0) {
+        for (let i = 0; i < args; i++) {
+          this.write([0x90, 0x90, 0x90, 0x90, 0x90]) // NOP x5
+        }
+        this.write([0x90, 0x90, 0x90])
+      }
+    }
   
     writeCall(destination: number, args: number[] = []) {
       if (args.length > 0) {

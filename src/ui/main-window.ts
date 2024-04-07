@@ -1,7 +1,7 @@
 import { QApplication, QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, FocusPolicy, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
 import path from 'path'
 
-const VERSION = '2.0.3';
+const VERSION = '2.0.4';
 export const SLIDER_MAX_VALUE = 1000;
 
 type FPSWidgetGroup = {

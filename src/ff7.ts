@@ -24,7 +24,7 @@ export enum FF7Address {
   FieldFPSLimiterSet = 0x60E425,
   BattleFPSValue = 0x9AB090,
   BattleFPSLimiterSet = 0x41B6CF,
-  MenuStartNilFunction = 0x721306,
+  MenuStartNilFunction = 0x721301,
   MenuStartDrawBusterFn = 0x721840,
   MenuStartDrawBusterAddr = 0x7224D7,
   MenuStartNewGameAddr = 0x7222A4,
@@ -263,23 +263,27 @@ export class FF7 {
     writer.writeStart()
     writer.writeCall(FF7Address.StoreRngSeed, [2048]) // the argument here is a placeholder to be replaced at runtime
     this.battleRNGSeedAddr = writer.offset - 12
-    writer.writeCall(FF7Address.MenuSetIsOpenFn, [0])
     writer.writeReturn()
     await this.writeMemory(functionStart, writer.toBuffer(), DataType.buffer)
+
+    // Use a random seed in case someone turned the RNG seed injection on and off
+    const randomSeed = Math.floor(Math.random() * 0x7FFF)
+    await this.writeMemory(this.battleRNGSeedAddr, randomSeed, DataType.int);
   }
 
   // Patch the MenuStartLoop function to call our 2st custom function
   async applyRNGSeedPatch() {
-    const writer = new OpcodeWriter(FF7Address.MenuStartNewGameAddr) 
-    writer.writeCall(this.battleRNGSeedSetFn, [0])
-    await this.writeMemory(FF7Address.MenuStartNewGameAddr, writer.toBuffer(), DataType.buffer)
+    const writer = new OpcodeWriter(FF7Address.MenuStartNilFunction) 
+    writer.writeCall(this.battleRNGSeedSetFn, [65535])
+    await this.writeMemory(FF7Address.MenuStartNilFunction, writer.toBuffer(), DataType.buffer)
   }
   
   // Revert the MenuStartLoop patch
   async revertRNGSeedPatch() {
-    const writer = new OpcodeWriter(FF7Address.MenuStartNewGameAddr) 
-    writer.writeCall(FF7Address.MenuSetIsOpenFn, [0])
-    await this.writeMemory(FF7Address.MenuStartNewGameAddr, writer.toBuffer(), DataType.buffer)
+    console.log("Reverting RNG seed patch...")
+    const writer = new OpcodeWriter(FF7Address.MenuStartNilFunction) 
+    writer.writeDummyCall(1)
+    await this.writeMemory(FF7Address.MenuStartNilFunction, writer.toBuffer(), DataType.buffer)
   }
 
   connect() {
