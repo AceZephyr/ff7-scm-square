@@ -48,6 +48,14 @@ export class OpcodeWriter {
         this.write(args.length * 4)
       }
     }
+
+    writeJmp(destination: number) {
+      const offset = this.offset
+      this.write(0xE9) // JMP
+      const buffer = Buffer.alloc(4)
+      buffer.writeInt32LE(destination - offset - 5)
+      this.write([...buffer])
+    }
   
     writeStart() {
       this.write([0x55, 0x8B, 0xEC]) // PUSH EBP; MOV EBP,ESP

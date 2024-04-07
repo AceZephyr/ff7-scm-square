@@ -820,6 +820,11 @@
     "@types/webpack-sources" "*"
     source-map "^0.6.0"
 
+"@types/winreg@^1.2.36":
+  version "1.2.36"
+  resolved "https://registry.yarnpkg.com/@types/winreg/-/winreg-1.2.36.tgz#f1d9a9918cae90a63c6106c98224aca6a36983fc"
+  integrity sha512-DtafHy5A8hbaosXrbr7YdjQZaqVewXmiasRS5J4tYMzt3s1gkh40ixpxgVFfKiQ0JIYetTJABat47v9cpr/sQg==
+
 "@types/yargs-parser@*":
   version "21.0.0"
   resolved "https://registry.yarnpkg.com/@types/yargs-parser/-/yargs-parser-21.0.0.tgz#0c60e537fa790f5f9472ed2776c2b71ec117351b"
@@ -3304,10 +3309,8 @@ memory-stream@0:
   dependencies:
     readable-stream "~1.0.26-2"
 
-memoryjs@^3.5.1:
-  version "3.5.1"
-  resolved "https://registry.yarnpkg.com/memoryjs/-/memoryjs-3.5.1.tgz#9156412cf18ad4ee0f6e57aa9753cc593884ff89"
-  integrity sha512-xSdgCVwjtpGr6GvC0h2gYnhno/8/cFFGa3PiDE4D3MlutWEtBO8LEYSB4sk5kfxZ2t6alHT+H76QJfWBoZWnlQ==
+memoryjs@../memoryjs:
+  version "4.0.0"
   dependencies:
     eslint "^8.5.0"
     eslint-config-airbnb-base "^12.1.0"
@@ -4642,6 +4645,11 @@ window-size@^0.1.4:
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/window-size/-/window-size-0.1.4.tgz#f8e1aa1ee5a53ec5bf151ffa09742a6ad7697876"
   integrity sha1-+OGqHuWlPsW/FR/6CXQqatdpeHY=
+
+winreg@^1.2.5:
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/winreg/-/winreg-1.2.5.tgz#b650383e89278952494b5d113ba049a5a4fa96d8"
+  integrity sha512-uf7tHf+tw0B1y+x+mKTLHkykBgK2KMs3g+KlzmyMbLvICSHQyB/xOFjTT8qZ3oeTFyU7Bbj4FzXitGG6jvKhYw==
 
 word-wrap@^1.2.3, word-wrap@~1.2.3:
   version "1.2.3"

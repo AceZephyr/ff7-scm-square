@@ -1,7 +1,7 @@
 import { QApplication, QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, FocusPolicy, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
 import path from 'path'
 
-const VERSION = '1.1.1';
+const VERSION = '2.0.3';
 export const SLIDER_MAX_VALUE = 1000;
 
 type FPSWidgetGroup = {
@@ -33,6 +33,10 @@ export interface MainWindow {
     load?: QPushButton,
     save?: QPushButton,
   },
+  driver: {
+    install?: QPushButton,
+    uninstall?: QPushButton,
+  },
   statusbar?: QStatusBar,
 };
 
@@ -41,12 +45,13 @@ const mainWindow: MainWindow = {
   tweaks: {},
   rng: {},
   buttons: {},
+  driver: {},
   statusbar: undefined,
 };
 
 function createWindow() {
   mainWindow.win = new QMainWindow();
-  mainWindow.win.setWindowTitle("FF7 Speed Square v" + VERSION);
+  mainWindow.win.setWindowTitle("FF7 SpeedSquare v" + VERSION);
 
   mainWindow.statusbar = new QStatusBar();
   mainWindow.statusbar.setSizeGripEnabled(false);
@@ -72,8 +77,10 @@ function createWindow() {
     `);
 }
 
-export function updateStatus(connected: boolean) {
-  mainWindow.statusbar?.showMessage("Status: " + (connected ? 'Connected' : 'Disconnected'));
+export function updateStatus(connected: boolean, text?: string) {
+  let message = "Status: " + (connected ? 'Connected' : 'Disconnected')
+  if (text) message += " - " + text;
+  mainWindow.statusbar?.showMessage(message);
 }
 
 function createRoot() {
@@ -190,7 +197,7 @@ function createInjectSeedGroup() {
   mainWindow.rng.setSeedRadio = radioSetSeed;
 
   const inputSetSeed = new QLineEdit();
-  inputSetSeed.setInlineStyle("width: 35px; background-color: #fff; color: #000;");
+  inputSetSeed.setInlineStyle("width: 70px; background-color: #fff; color: #000;");
   groupBoxLayout.addWidget(inputSetSeed);  
   mainWindow.rng.setSeedInput = inputSetSeed;
 }
@@ -216,11 +223,34 @@ function createButtons() {
   mainWindow.buttons.save = saveButton;
 }
 
+function createDriverGroup() {
+  const buttonGroup = new QGroupBox();
+  buttonGroup.setTitle("FPS Fix driver")
+  const buttonGroupLayout = new QBoxLayout(Direction.LeftToRight);
+  buttonGroupLayout.setSpacing(5);
+  buttonGroup.setLayout(buttonGroupLayout);
+  mainWindow.rootLayout?.addWidget(buttonGroup);
+  buttonGroup.setInlineStyle('flex-direction: row; width: 100%;');
+
+  const installButton = new QPushButton();
+  installButton.setText("Install");
+  installButton.setInlineStyle("color: black;")
+  buttonGroupLayout.addWidget(installButton);
+  mainWindow.driver.install = installButton;
+
+  const uninstallButton = new QPushButton();
+  uninstallButton.setText("Uninstall");
+  uninstallButton.setInlineStyle("color: black;")
+  buttonGroupLayout.addWidget(uninstallButton);
+  mainWindow.driver.uninstall = uninstallButton;
+}
+
 export function createMainWindow() {
   createWindow();
   createRoot();
-  createFPSSettingsGroup();
-  createGameTweaksGroup();
+  // createFPSSettingsGroup();
+  // createGameTweaksGroup();
+  createDriverGroup();
   createInjectSeedGroup();
   createButtons();
 

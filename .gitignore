@@ -5,3 +5,4 @@ deploy
 *.log
 .vscode
 .DS_Store
+driver/

@@ -2,13 +2,16 @@ import { DataType } from './memoryjs-mock';
 import EventEmitter from 'events';
 import { encodeText } from './lib/fftext';
 import { OpcodeWriter } from './opcodewriter';
-import { callWithTimeout } from './lib/utils';
+import { callWithTimeout, hexToBytes } from './lib/utils';
+import path from 'path';
+import { write } from 'fs';
 
 const memoryjs = require('memoryjs')
 
 interface ProcessObj {
   szExeFile: string;
   handle: number;
+  th32ProcessID: number;
 }
 
 enum FF7Events {
@@ -32,6 +35,14 @@ export enum FF7Address {
   CurrentModule = 0xCBF9DC,
   DrawText = 0x6F5b03,
   RngSeedParam = 0x6CCDBE,
+  GetTimeFn = 0x660370,
+  DiffTimeFn = 0x6603a0,
+  FieldFpsLimiterFn = 0x6384E6,
+  CustomGetTimeFn = 0x6386F0,
+  CustomDiffTimeFn = 0x638710,
+  CustomInt2Double = 0x638740,
+  CustomConstants = 0x638760,
+  CustomLastGametime = 0xcff8d8,
 }
 
 export class FF7 {
@@ -211,7 +222,7 @@ export class FF7 {
     const gameObjPtr = await this.readMemory(0xDB2BB8, DataType.int) as number;
 
     // Check if window already was unfocused (tick function pointer is out of program memory)
-    const tickFunctionPtr = await this.readMemory(gameObjPtr + 0xa00, DataType.int);
+    const tickFunctionPtr = await this.readMemory(gameObjPtr + 0xa00, DataType.int) as number;
     if (tickFunctionPtr > 0xFFFFFF) {
       // If it is unfocused, delay patching until it's focused
       await callWithTimeout(() => this.patchWindowUnfocus(), 250);
@@ -230,15 +241,6 @@ export class FF7 {
   }
 
   async applyPatches() {
-    // Remove code that sets the field FPS when field module initializes
-    // because we will set this value ourselves
-    let nops = Buffer.from(new Array(21).fill(0x90))
-    await this.writeMemory(FF7Address.FieldFPSLimiterSet, nops, DataType.buffer)
-
-    // Same for Battle FPS
-    nops = Buffer.from(new Array(15).fill(0x90))
-    await this.writeMemory(FF7Address.BattleFPSLimiterSet, nops, DataType.buffer)
-
     // Patch the MenuStartLoop function to call our 1st custom function
     let writer = new OpcodeWriter(FF7Address.MenuStartDrawBusterFn)
     writer.writeCall(FF7Address.CustomStartFunction)
@@ -297,7 +299,7 @@ export class FF7 {
           }, this.firstCheck ? 50 : 2500);
           break;
         } catch (e) {
-          console.log('FF7 executable not found under process name: ' + name);
+          // console.log('FF7 executable not found under process name: ' + name);
         }
       }
 

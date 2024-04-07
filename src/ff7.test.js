@@ -1,6 +1,7 @@
+const { memoryjs, DataType } = require('./memoryjs-mock');
 const {FF7} = require('./ff7'); 
-const { DataType } = require('./memoryjs-mock');
 
+jest.mock('memoryjs', () => memoryjs);
 jest.useFakeTimers();
 
 describe("FF7", () => {

@@ -1,4 +1,5 @@
-import { QApplication, SliderAction } from '@nodegui/nodegui';
+import { QApplication, SliderAction, QFileDialog, FileMode } from '@nodegui/nodegui';
+import { QMessageBox, ButtonRole, QPushButton } from '@nodegui/nodegui';
 import { createMainWindow, MainWindow, SLIDER_MAX_VALUE, updateStatus } from './ui/main-window';
 import { watch } from 'vue';
 import { RngMode, state } from './state';
@@ -7,6 +8,8 @@ import { FF7, FF7Address } from './ff7';
 import { DataType } from './memoryjs-mock';
 import { debounce } from 'throttle-debounce';
 import { encodeText } from './lib/fftext';
+import fs, { copyFileSync } from 'fs';
+import path from 'path';
 
 const app = QApplication.instance();
 const config = new Configuration('settings.json', state);
@@ -15,6 +18,29 @@ const ff7 = new FF7();
 type GameModule = 'field' | 'world' | 'battle';
 const mapModules = (cb: (type: GameModule) => void) => 
   (['field', 'world', 'battle'] as GameModule[]).forEach(type => cb(type));
+
+function alert(title: string, text: string) {
+  const messageBox = new QMessageBox();
+  messageBox.setText(title);
+  messageBox.setInformativeText(text);
+  const accept = new QPushButton();
+  accept.setText('Ok');
+  messageBox.addButton(accept, ButtonRole.AcceptRole);
+  messageBox.exec();
+}
+
+function confirm(title: string, text: string) {
+  const messageBox = new QMessageBox();
+  messageBox.setText(title);
+  messageBox.setInformativeText(text);
+  const accept = new QPushButton();
+  accept.setText('Yes');
+  messageBox.addButton(accept, ButtonRole.AcceptRole);
+  const reject = new QPushButton();
+  reject.setText('No');
+  messageBox.addButton(reject, ButtonRole.RejectRole);
+  return messageBox.exec();
+}
 
 function updateFPSUI(win: MainWindow, type: GameModule) {
   win.fps[type].slider?.setSliderPosition(state.fps[type].value);
@@ -29,7 +55,6 @@ function updateFPSUI(win: MainWindow, type: GameModule) {
 }
 
 function updateUI(win: MainWindow) {
-  console.log(`updateUI`);
 
   // FPS Group
   mapModules(type => updateFPSUI(win, type));
@@ -45,6 +70,10 @@ function updateUI(win: MainWindow) {
   win.rng.setSeedRadio?.setChecked(state.rng.mode === RngMode.set);
   win.rng.setSeedInput?.setEnabled(state.rng.mode === RngMode.set);
   win.rng.setSeedInput?.setText(state.rng.seed);
+
+  // Driver Group
+  win.driver.install?.setEnabled(!state.driver.installed);
+  win.driver.uninstall?.setEnabled(state.driver.installed);
 }
 
 const debouncedFF7Update = debounce(250, updateFF7Values);
@@ -67,6 +96,100 @@ function loadConfig() {
   state.fps = data.fps;
   state.rng = data.rng;
   state.tweaks = data.tweaks;
+  state.driver = data.driver || {};
+}
+
+function installDriver() {
+  const fileDialog = new QFileDialog();
+  fileDialog.setFileMode(FileMode.Directory);
+  fileDialog.exec();
+  state.driver.gamePath = fileDialog.selectedFiles()[0];
+
+  // Check for ff7input.cfg file
+  const ff7InputPath = path.resolve(process.env.USERPROFILE || '', 'Documents', 'Square Enix', 'FINAL FANTASY VII Steam', 'ff7input.cfg');
+  if (fs.existsSync(ff7InputPath)) {
+    // Read the first byte of the file and check whether it's 00
+    const ff7Input = fs.readFileSync(ff7InputPath);
+    if (ff7Input[0] === 0) {
+      const result = confirm("Malformed input config detected!", "Your ff7input.cfg file seems to be malformed. Would you like to fix it by resetting the controls to defaults?")
+      if (result === 0) {
+        const ff7InputDefaultPath = path.resolve(process.cwd(), 'driver', 'ff7input.cfg');
+        copyFileSync(ff7InputDefaultPath, ff7InputPath);
+      }
+    }
+  }
+
+  if (!state.driver.gamePath) {
+    return;
+  }
+
+  const driverSourcePath = path.resolve(process.cwd(), 'driver', 'AF3DN.P');
+  const driverShadersPath = path.resolve(process.cwd(), 'driver', 'shaders');
+  const driverGamePath = path.resolve(state.driver.gamePath, 'AF3DN.P');
+  const driverBackupPath = path.resolve(state.driver.gamePath, 'AF3DN.P.bak');
+
+  // If driver does not exist, alert
+  if (!fs.existsSync(driverGamePath)) {
+    alert("Driver not found", "Please select the root directory of your FF7 installation that contains the AF3DN.P file.");
+    return;
+  }
+
+  // Check if backup exists
+  if (fs.existsSync(driverBackupPath)) {
+    state.driver.installed = true;
+    alert("Already installed", "The driver was already installed, no action was taken.");
+    return;
+  }
+
+  fs.copyFileSync(driverGamePath, driverBackupPath);
+  fs.copyFileSync(driverSourcePath, driverGamePath);
+
+  // Copy all files from shaders directory to game directory
+  fs.mkdirSync(driverShadersPath, {recursive: true});
+  fs.readdirSync(driverShadersPath).forEach(file => {
+    // Skip directories
+    if (fs.lstatSync(path.resolve(driverShadersPath, file)).isDirectory()) {
+      return;
+    }
+    fs.copyFileSync(path.resolve(driverShadersPath, file), path.resolve(state.driver.gamePath as string, 'shaders', file));
+  });
+
+  state.driver.installed = true;
+  config.save(state);
+}
+
+function uninstallDriver() {
+  if (!state.driver.gamePath) {
+    return;
+  }
+
+  const driverGamePath = path.resolve(state.driver.gamePath, 'AF3DN.P');
+  const driverBackupPath = path.resolve(state.driver.gamePath, 'AF3DN.P.bak');
+
+  // Check if backup exists
+  if (!fs.existsSync(driverBackupPath)) {
+    state.driver.installed = false;
+    return;
+  }
+
+  fs.copyFileSync(driverBackupPath, driverGamePath);
+
+  // Remove the backup file
+  fs.unlinkSync(driverBackupPath);
+
+  state.driver.installed = false;
+  config.save(state);
+}
+
+function checkDriver() {
+  const driverBackupPath = path.resolve(state.driver.gamePath + '', 'AF3DN.P.bak');
+
+  if (!state.driver.gamePath || !fs.existsSync(driverBackupPath) ) {
+    state.driver.installed = false;
+    
+  } else {
+    state.driver.installed = true;
+  }
 }
 
 async function writeRNGSeed() {
@@ -140,6 +263,10 @@ function setupListeners(win: MainWindow) {
   win.buttons.save?.addEventListener('clicked', () => {
     config.save(state);
   })
+
+  // Driver group
+  win.driver.install?.addEventListener('clicked', installDriver)
+  win.driver.uninstall?.addEventListener('clicked', uninstallDriver)
 }
 
 async function updateFPS(address: number, value: number, initial: number, subtract: number) {
@@ -191,6 +318,7 @@ async function updateFF7ValuesImmediate() {
   setupWatchers(mainWindow);
   setupListeners(mainWindow);
   loadConfig();
+  checkDriver();
   updateUI(mainWindow);
 
   ff7.start();

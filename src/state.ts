@@ -31,6 +31,10 @@ const initialStateObj = {
     mode: RngMode.random,
     seed: ''
   },
+  driver: {
+    installed: false,
+    gamePath: null as string | null,
+  },
   app: {
     connected: false
   }

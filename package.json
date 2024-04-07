@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "build": "webpack --mode production",
-    "package": "nodegui-packer --pack ./dist",
+    "package": "nodegui-packer --pack ./dist && xcopy /y /e /i driver deploy\\win32\\build\\SpeedSquare\\driver ",
     "start": "webpack && qode ./dist/index.js",
     "debug": "webpack && qode --inspect ./dist/index.js",
     "test": "jest"
@@ -15,10 +15,12 @@
   "dependencies": {
     "@nodegui/nodegui": "^0.58.0",
     "@types/throttle-debounce": "^5.0.0",
+    "@types/winreg": "^1.2.36",
     "env-paths": "^3.0.0",
-    "memoryjs": "^3.5.1",
+    "memoryjs": "../memoryjs",
     "throttle-debounce": "^5.0.0",
-    "vue": "^3.2.31"
+    "vue": "^3.2.31",
+    "winreg": "^1.2.5"
   },
   "devDependencies": {
     "@nodegui/packer": "^1.5.0",
