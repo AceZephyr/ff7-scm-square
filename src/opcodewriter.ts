@@ -17,6 +17,12 @@ export class OpcodeWriter {
         this.opcodes.push(opcodes)
       }
     }
+
+    writeInt32(value: number) {
+      const buffer = Buffer.alloc(4)
+      buffer.writeInt32LE(value)
+      this.write([...buffer])
+    }
   
     writePush(value: number) {
       if (value > 255) {

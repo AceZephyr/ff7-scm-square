@@ -263,12 +263,24 @@ export class FF7 {
     writer.writeStart()
     writer.writeCall(FF7Address.StoreRngSeed, [2048]) // the argument here is a placeholder to be replaced at runtime
     this.battleRNGSeedAddr = writer.offset - 12
+
+    // Self modifying code to disable the RNG injection after it runs once
+    writer.write(0xBF) // MOV EDI, battleRNGSeedAddr
+    writer.writeInt32(FF7Address.MenuStartNilFunction)
+    writer.write([0xB0, 0x90]) // MOV AL, 90
+    writer.write([0xB9, 0xD, 0, 0, 0]) // MOV ECX, 0D
+    writer.write(0xFC) // CLD
+    writer.write([0xF3, 0xAA]) // REP STOSB
+    
     writer.writeReturn()
     await this.writeMemory(functionStart, writer.toBuffer(), DataType.buffer)
 
     // Use a random seed in case someone turned the RNG seed injection on and off
     const randomSeed = Math.floor(Math.random() * 0x7FFF)
     await this.writeMemory(this.battleRNGSeedAddr, randomSeed, DataType.int);
+
+    // Disable write protection for the RNG Seed function memory area
+    await memoryjs.virtualProtectEx(this.processObj?.handle, FF7Address.MenuStartNilFunction, 13, memoryjs.PAGE_EXECUTE_READWRITE);
   }
 
   // Patch the MenuStartLoop function to call our 2st custom function
