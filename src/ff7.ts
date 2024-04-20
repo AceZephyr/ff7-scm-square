@@ -241,6 +241,12 @@ export class FF7 {
   }
 
   async applyPatches() {
+    const check = await this.readMemory(FF7Address.SpeedSquareTextAddr, DataType.int);
+    if (check !== 0xFFD46067) {
+      console.log("Patches already applied")
+      return;
+    }
+
     // Patch the MenuStartLoop function to call our 1st custom function
     let writer = new OpcodeWriter(FF7Address.MenuStartDrawBusterFn)
     writer.writeCall(FF7Address.CustomStartFunction)
