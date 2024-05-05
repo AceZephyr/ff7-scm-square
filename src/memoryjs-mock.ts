@@ -5,7 +5,9 @@ let ff7Memory: unknown[] = [];
 export enum DataType {
     byte = 'byte',
     short = 'short',
+    ushort = 'ushort',
     int = 'int',
+    uint = 'uint',
     double = 'double',
     buffer = 'buffer',
 };

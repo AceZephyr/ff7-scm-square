@@ -8,14 +8,15 @@
   "scripts": {
     "build": "webpack --mode production",
     "package": "nodegui-packer --pack ./dist && xcopy /y /e /i driver deploy\\win32\\build\\SpeedSquare\\driver ",
-    "start": "webpack && qode ./dist/index.js",
+    "start": "cross-env NODE_OPTIONS=\"--openssl-legacy-provider\" webpack && qode ./dist/index.js",
     "debug": "webpack && qode --inspect ./dist/index.js",
     "test": "jest"
   },
   "dependencies": {
-    "@nodegui/nodegui": "^0.58.0",
+    "@nodegui/nodegui": "^0.66.0",
     "@types/throttle-debounce": "^5.0.0",
     "@types/winreg": "^1.2.36",
+    "cross-env": "^7.0.3",
     "env-paths": "^3.0.0",
     "memoryjs": "../memoryjs",
     "throttle-debounce": "^5.0.0",

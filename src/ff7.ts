@@ -5,6 +5,7 @@ import { OpcodeWriter } from './opcodewriter';
 import { callWithTimeout, hexToBytes } from './lib/utils';
 import path from 'path';
 import { write } from 'fs';
+import { RngMode } from './state';
 
 const memoryjs = require('memoryjs')
 
@@ -64,6 +65,9 @@ export class FF7 {
   // Memory transactions for rolling back memory writes
   private transactions: Record<string, { addr: number; value: number | Buffer; type: DataType }[]> = {};
   private currentTransaction: string | null = null;
+
+  public currentRNGSeed = 0;
+  public currentRNGMode: 'none' | 'random' | 'set' = 'none';
 
   LOOP_INTERVAL_MS = 100;
 
@@ -240,29 +244,54 @@ export class FF7 {
     await this.writeMemory(0x74a561, 0x80, DataType.byte); 
   }
 
-  async applyPatches() {
-    const check = await this.readMemory(FF7Address.SpeedSquareTextAddr, DataType.int);
-    if (check !== 0xFFD46067) {
-      console.log("Patches already applied")
+  async writeStartScreenText() {
+    const check = Number(await this.readMemory(FF7Address.SpeedSquareTextAddr, DataType.uint));
+    if (check !== 0xFFD46067 && check != 0) {
+      console.log("Text already written", check.toString(16));
       return;
     }
+
+    // Store SpeedSquare text FF7-encoded in memory
+    let text = "SpeedSquare is active";
+    if (this.currentRNGMode === RngMode.random) {
+      text += `. Random RNG seed: ${this.currentRNGSeed}`
+    } else if (this.currentRNGMode === RngMode.set) {
+      text += `. RNG seed injected: ${this.currentRNGSeed}`
+    } else {
+      text += ". Default RNG Seed"
+    }
+
+    const encodedText = encodeText(text)
+    await this.writeMemory(FF7Address.SpeedSquareTextAddr, encodedText, DataType.buffer)
+  }
+
+  async applyPatches() {
+    const check = Number(await this.readMemory(FF7Address.CustomStartFunction, DataType.uint));
+    if (check !== 0x83EC8B55) {
+      // Write check in hex, unsigned
+      console.log("Patches already applied", check.toString(16));
+      return;
+    }
+
+    console.log("Applying patches...")
 
     // Patch the MenuStartLoop function to call our 1st custom function
     let writer = new OpcodeWriter(FF7Address.MenuStartDrawBusterFn)
     writer.writeCall(FF7Address.CustomStartFunction)
     await this.writeMemory(FF7Address.MenuStartDrawBusterFn, writer.toBuffer(), DataType.buffer)
 
-    // Store SpeedSquare text FF7-encoded in memory
-    const encodedText = encodeText("SpeedSquare is active")
-    const encodedTextAddress = FF7Address.SpeedSquareTextAddr
-    await this.writeMemory(encodedTextAddress, encodedText, DataType.buffer)
-
     // First custom function - display SpeedSquare text on the new game screen
     const functionStart = FF7Address.CustomStartFunction + 3
     writer = new OpcodeWriter(functionStart) // skipping initial 2 opcodes
-    writer.writeCall(FF7Address.DrawText, [10, 13, encodedTextAddress, 6, 0])
+    writer.writeCall(FF7Address.DrawText, [10, 13, FF7Address.SpeedSquareTextAddr, 6, 0])
     writer.writeCall(FF7Address.MenuStartDrawBusterAddr)
     writer.writeReturn()
+
+    const check2 = Number(await this.readMemory(FF7Address.SpeedSquareTextAddr, DataType.uint));
+    if (check2 === 0xFFD46067) {
+      const encodedText = encodeText("    ")
+      await this.writeMemory(FF7Address.SpeedSquareTextAddr, encodedText, DataType.buffer)
+    }
 
     // Second custom function - write battle RNG seed when new game starts
     this.battleRNGSeedSetFn = writer.offset
@@ -272,9 +301,9 @@ export class FF7 {
 
     // Self modifying code to disable the RNG injection after it runs once
     writer.write(0xBF) // MOV EDI, battleRNGSeedAddr
-    writer.writeInt32(FF7Address.MenuStartNilFunction)
+    writer.writeInt32(this.battleRNGSeedSetFn + 8)
     writer.write([0xB0, 0x90]) // MOV AL, 90
-    writer.write([0xB9, 0xD, 0, 0, 0]) // MOV ECX, 0D
+    writer.write([0xB9, 0x5, 0, 0, 0]) // MOV ECX, 05
     writer.write(0xFC) // CLD
     writer.write([0xF3, 0xAA]) // REP STOSB
     
@@ -283,7 +312,7 @@ export class FF7 {
 
     // Use a random seed in case someone turned the RNG seed injection on and off
     const randomSeed = Math.floor(Math.random() * 0x7FFF)
-    await this.writeMemory(this.battleRNGSeedAddr, randomSeed, DataType.int);
+    await this.writeMemory(this.battleRNGSeedAddr, this.currentRNGSeed || randomSeed, DataType.int);
 
     // Disable write protection for the RNG Seed function memory area
     await memoryjs.virtualProtectEx(this.processObj?.handle, FF7Address.MenuStartNilFunction, 13, memoryjs.PAGE_EXECUTE_READWRITE);
@@ -291,9 +320,15 @@ export class FF7 {
 
   // Patch the MenuStartLoop function to call our 2st custom function
   async applyRNGSeedPatch() {
+    if (this.battleRNGSeedSetFn === 0) {
+      console.log("RNG seed function not found, aborting...")
+      return;
+    }
+
     const writer = new OpcodeWriter(FF7Address.MenuStartNilFunction) 
     writer.writeCall(this.battleRNGSeedSetFn, [65535])
     await this.writeMemory(FF7Address.MenuStartNilFunction, writer.toBuffer(), DataType.buffer)
+    await this.writeStartScreenText()
   }
   
   // Revert the MenuStartLoop patch
@@ -302,6 +337,7 @@ export class FF7 {
     const writer = new OpcodeWriter(FF7Address.MenuStartNilFunction) 
     writer.writeDummyCall(1)
     await this.writeMemory(FF7Address.MenuStartNilFunction, writer.toBuffer(), DataType.buffer)
+    await this.writeStartScreenText()
   }
 
   connect() {
