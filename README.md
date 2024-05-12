@@ -1,6 +1,6 @@
-# nodegui-starter
+# SpeedSquare - FF7 speedrunner app
 
-**Clone and run for a quick way to see NodeGui in action.**
+This repository contains code for building the SpeedSquare app for FF7 speedrunners.
 
 ## If you get OpenSSL errors:
 
@@ -17,50 +17,23 @@ Make sure you have met the requirements listed here: https://docs.nodegui.org/do
 From your command line:
 
 ```bash
-# Clone this repository
-git clone https://github.com/nodegui/nodegui-starter
 # Go into the repository
-cd nodegui-starter
+cd ff7-speed-square
 # Install dependencies
-npm install
+yarn
 # Run the app
-npm start
+yarn start
 ```
 
-## Resources for Learning NodeGui
+## Building
 
-- [docs.nodegui.org](https://nodegui.github.io/nodegui) - all of NodeGui and React Desktop's documentation
+To build and package the app simply run the following commands:
 
-## Packaging app as a distributable
-
-In order to distribute your finished app, you can use [@nodegui/packer](https://github.com/nodegui/packer)
-
-### Step 1: (_**Run this command only once**_)
-
-```sh
-npx nodegui-packer --init MyAppName
+```bash
+yarn build
+yarn package
 ```
 
-This will produce the deploy directory containing the template. You can modify this to suite your needs. Like add icons, change the name, description and add other native features or dependencies. Make sure you commit this directory.
+The resulting package will be placed under deploy\win32\build\SpeedSquare
 
-### Step 2: (_**Run this command every time you want to build a new distributable**_)
-
-Next you can run the pack command:
-
-```sh
-npm run build
-```
-
-This will produce the js bundle along with assets inside the `./dist` directory
-
-```sh
-npx nodegui-packer --pack ./dist
-```
-
-This will build the distributable using @nodegui/packer based on your template. The output of the command is found under the build directory. You should gitignore the build directory.
-
-More details about packer can be found here: https://github.com/nodegui/packer
-
-## License
-
-MIT
+NOTE: During the build the contents of the `driver` directory will be copied to the resulting bundle.

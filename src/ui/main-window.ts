@@ -1,28 +1,12 @@
-import { QApplication, QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, FocusPolicy, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
+import { QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
 import path from 'path'
 
-const VERSION = '2.0.7';
+const VERSION = '1.0.0';
 export const SLIDER_MAX_VALUE = 1000;
-
-type FPSWidgetGroup = {
-  input?: QLineEdit,
-  slider?: QSlider,
-  auto?: QCheckBox,
-};
 
 export interface MainWindow {
   win?: QMainWindow,
   rootLayout?: QBoxLayout,
-  fps: {
-    field: FPSWidgetGroup,
-    world: FPSWidgetGroup,
-    battle: FPSWidgetGroup,
-  },
-  tweaks: {
-    battleSwirlCheck?: QCheckBox,
-    menusCheck?: QCheckBox,
-    pauseCheck?: QCheckBox,
-  },
   rng: {
     injectSeedGroupBox?: QGroupBox,
     randomSeedRadio?: QRadioButton,
@@ -41,8 +25,6 @@ export interface MainWindow {
 };
 
 const mainWindow: MainWindow = {
-  fps: {field: {}, world: {}, battle: {}},
-  tweaks: {},
   rng: {},
   buttons: {},
   driver: {},
@@ -89,87 +71,6 @@ function createRoot() {
   mainWindow.rootLayout = new QBoxLayout(Direction.TopToBottom);
   centralWidget.setLayout(mainWindow.rootLayout);
   mainWindow.win?.setCentralWidget(centralWidget);
-}
-
-function createFPSSettingsLine(layout: QGridLayout, label: string, row: number, autoFPS: number, widgetGroup: FPSWidgetGroup) {
-  const labelWidget = new QLabel();
-  labelWidget.setText(label + ":");
-  labelWidget.setAlignment(AlignmentFlag.AlignRight);
-  labelWidget.setInlineStyle("color: black;")
-  layout.addWidget(labelWidget, row, 0);
-
-  const inputWidget = new QLineEdit();
-  inputWidget.setInlineStyle("width: 35px; background-color: #fff; color: #000;");
-  // inputWidget.setFocusPolicy(FocusPolicy.NoFocus);
-  inputWidget.setText("100");
-  layout.addWidget(inputWidget, row, 1);
-  widgetGroup.input = inputWidget;
-
-  const sliderWidget = new QSlider();
-  sliderWidget.setOrientation(Orientation.Horizontal);
-  sliderWidget.setTracking(true);
-  sliderWidget.setRange(0, SLIDER_MAX_VALUE);
-  sliderWidget.setTickPosition(TickPosition.TicksBelow);
-  layout.addWidget(sliderWidget, row, 2);
-  widgetGroup.slider = sliderWidget;
-
-  // const checkboxWidget = new QCheckBox();
-  // checkboxWidget.setObjectName("checkFieldFPSAuto");
-  // checkboxWidget.setText(`Auto ${autoFPS} FPS`);
-  // checkboxWidget.setInlineStyle("color: black;")
-  // layout.addWidget(checkboxWidget, row, 3);
-  // widgetGroup.auto = checkboxWidget;
-}
-
-function createFPSSettingsGroup() {
-  const groupBox = new QGroupBox();
-  const groupBoxLayout = new QGridLayout();
-  groupBox.setObjectName("fpsgroup");
-  groupBox.setLayout(groupBoxLayout);
-  groupBox.setTitle("FPS Settings");
-  mainWindow.rootLayout?.addWidget(groupBox);
-  groupBoxLayout.setColumnStretch(2, 1);
-  groupBoxLayout.setColumnMinimumWidth(2, 200);
-
-  createFPSSettingsLine(groupBoxLayout, "Field", 0, 30, mainWindow.fps.field);
-  // createFPSSettingsLine(groupBoxLayout, "World", 1, 30, mainWindow.fps.world);
-  createFPSSettingsLine(groupBoxLayout, "Battle", 2, 15, mainWindow.fps.battle);
-  
-  const labelWidget = new QLabel();
-  labelWidget.setText("500 is the default. Less than 500 is slower, more than 500 is faster");
-  labelWidget.setAlignment(AlignmentFlag.AlignCenter);
-  labelWidget.setInlineStyle("color: gray;")
-  groupBoxLayout.addWidget(labelWidget, 3, 0, undefined, 3);
-}
-
-function createGameTweaksGroup() {
-  const groupBox = new QGroupBox();
-  const groupBoxLayout = new QBoxLayout(Direction.TopToBottom);
-  groupBox.setObjectName("tweaksgroup");
-  groupBox.setLayout(groupBoxLayout);
-  groupBox.setTitle("Game Tweaks");
-  mainWindow.rootLayout?.addWidget(groupBox);
-
-  const checkBattleSwirlFPS = new QCheckBox();
-  checkBattleSwirlFPS.setObjectName("checkBattleSwirlFPS");
-  checkBattleSwirlFPS.setText("Cap battle swirl to 60 FPS");
-  checkBattleSwirlFPS.setInlineStyle("color: black;")
-  groupBoxLayout.addWidget(checkBattleSwirlFPS);
-  mainWindow.tweaks.battleSwirlCheck = checkBattleSwirlFPS;
-
-  // const checkMenuFPS = new QCheckBox();
-  // checkMenuFPS.setObjectName("checkMenuFPS");
-  // checkMenuFPS.setText("Cap menus to 60 FPS");
-  // checkMenuFPS.setInlineStyle("color: black;")
-  // groupBoxLayout.addWidget(checkMenuFPS);
-  // mainWindow.tweaks.menusCheck = checkMenuFPS;
-
-  const checkDisablePausing = new QCheckBox();
-  checkDisablePausing.setObjectName("checkDisablePausing");
-  checkDisablePausing.setText("Don't pause the game when unfocused");
-  checkDisablePausing.setInlineStyle("color: black;")
-  groupBoxLayout.addWidget(checkDisablePausing);
-  mainWindow.tweaks.pauseCheck = checkDisablePausing;
 }
 
 function createInjectSeedGroup() {
@@ -248,8 +149,6 @@ function createDriverGroup() {
 export function createMainWindow() {
   createWindow();
   createRoot();
-  // createFPSSettingsGroup();
-  // createGameTweaksGroup();
   createDriverGroup();
   createInjectSeedGroup();
   createButtons();

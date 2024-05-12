@@ -1,10 +1,10 @@
-import { QApplication, SliderAction, QFileDialog, FileMode } from '@nodegui/nodegui';
+import { QApplication, QFileDialog, FileMode } from '@nodegui/nodegui';
 import { QMessageBox, ButtonRole, QPushButton } from '@nodegui/nodegui';
-import { createMainWindow, MainWindow, SLIDER_MAX_VALUE, updateStatus } from './ui/main-window';
+import { createMainWindow, MainWindow, updateStatus } from './ui/main-window';
 import { watch } from 'vue';
 import { RngMode, state } from './state';
 import { Configuration } from './configuration';
-import { FF7, FF7Address } from './ff7';
+import { FF7 } from './ff7';
 import { DataType } from './memoryjs-mock';
 import { debounce } from 'throttle-debounce';
 import fs, { copyFileSync } from 'fs';
@@ -66,9 +66,7 @@ function loadConfig() {
     return;
   }
 
-  state.fps = data.fps;
   state.rng = data.rng;
-  state.tweaks = data.tweaks;
   state.driver = data.driver || {};
 }
 
@@ -173,7 +171,7 @@ async function writeRNGSeed() {
       await ff7.writeMemory(ff7.battleRNGSeedAddr, parseInt(state.rng.seed), DataType.int);
       console.log("Set Seed mode active, seed:", state.rng.seed)
     } else if (state.rng.mode === RngMode.random) {
-      const randomSeed = Math.floor(Math.random() * 0x7FFF)
+      const randomSeed = ff7.getRandomSeed();
       ff7.currentRNGSeed = randomSeed;
       ff7.currentRNGMode = RngMode.random;
       await ff7.writeMemory(ff7.battleRNGSeedAddr, randomSeed, DataType.int);
@@ -204,7 +202,6 @@ function setupListeners(win: MainWindow) {
 
   // Buttons group
   win.buttons.load?.addEventListener('clicked', loadConfig)
-
   win.buttons.save?.addEventListener('clicked', () => {
     config.save(state);
   })
@@ -237,5 +234,4 @@ async function updateFF7Values() {
   ff7.onDisconnect(() => {
     state.app.connected = false;
   });
-
 })();

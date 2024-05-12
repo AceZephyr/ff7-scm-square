@@ -2,10 +2,8 @@ import { DataType } from './memoryjs-mock';
 import EventEmitter from 'events';
 import { encodeText } from './lib/fftext';
 import { OpcodeWriter } from './opcodewriter';
-import { callWithTimeout, hexToBytes } from './lib/utils';
-import path from 'path';
-import { write } from 'fs';
 import { RngMode } from './state';
+import { webcrypto } from 'crypto';
 
 const memoryjs = require('memoryjs')
 
@@ -105,7 +103,6 @@ export class FF7 {
   }
 
   startTransaction(name: string) {
-    console.log("Start transaction")
     // If a transaction is already in progress, do nothing
     if (this.currentTransaction) return;
 
@@ -117,8 +114,18 @@ export class FF7 {
   }
 
   stopTransaction() {
-    console.log("Stop transaction")
     this.currentTransaction = null;
+  }
+
+  getRandomSeed() {
+    // Generate a random seed that's at least equal to Jan 1, 1980 and is capped at 2^31 - 1
+    let rng = 0;
+    while (rng < 315529200) {
+      const arr = new Uint32Array(1);
+      webcrypto.getRandomValues(arr);
+      rng = arr[0] % (2 ** 31 - 1);
+    }
+    return rng;
   }
 
   async rollbackTransaction(name: string) {
@@ -200,50 +207,6 @@ export class FF7 {
     });
   }
   
-  // Fix Battle Swirl FPS Limiter
-  async patchBattleSwirl() {
-    console.log("Patching battle swirl...")
-    // Adjust the jump instruction so it lands on our new mov opcode after the conditional
-    await this.writeMemory(0x402263, 0x1775, DataType.short); // jne 00402279
-
-    // Set value at 0x9A04E8 (fps limiter flag) to 1 at the start of every battle swirl tick
-    // This replaces a debug log function call that serves us no purpose
-    const bytesMov = Buffer.from([0xC7, 5, 0xE8, 4, 0x9A, 0, 1, 0, 0, 0, 0x90, 0x90, 0x90]);
-    await this.writeMemory(0x40227C, bytesMov, DataType.buffer) // mov [009A04E8],00000001
-
-    // Remove a duplicate swirl call that was called regardless of the limiter
-    const bytesNop = Buffer.from(Array(8).fill(0x90));
-    await this.writeMemory(0x4022B2, bytesNop, DataType.buffer) 
-
-    // Set the target battle swirl FPS to 60 (originally it's 30)
-    await this.writeMemory(0x7BA1B8, 60.0, DataType.double); // 60 fps
-  }
-
-  async patchWindowUnfocus(): Promise<void> {
-    console.log("Patching window unfocus...")
-
-    // First we need to find the location of Game Object in memory
-    const gameObjPtr = await this.readMemory(0xDB2BB8, DataType.int) as number;
-
-    // Check if window already was unfocused (tick function pointer is out of program memory)
-    const tickFunctionPtr = await this.readMemory(gameObjPtr + 0xa00, DataType.int) as number;
-    if (tickFunctionPtr > 0xFFFFFF) {
-      // If it is unfocused, delay patching until it's focused
-      await callWithTimeout(() => this.patchWindowUnfocus(), 250);
-      return;
-    }
-    
-    // Find the function responsible for halting the game when unfocused
-    const gfxFunctionPtrs = await this.readMemory(gameObjPtr + 0x934, DataType.int) as number;
-    const gfxFlipPtr = await this.readMemory(gfxFunctionPtrs + 0x4, DataType.int) as number;
-
-    // Add a RET instruction at the beginning of this function
-    await this.writeMemory(gfxFlipPtr + 0x260, 0xC3, DataType.byte); 
-
-    // Add Global Focus flag to sound buffer initialization so we don't lose sound while unfocued
-    await this.writeMemory(0x74a561, 0x80, DataType.byte); 
-  }
-
   async writeStartScreenText() {
     const check = Number(await this.readMemory(FF7Address.SpeedSquareTextAddr, DataType.uint));
     if (check !== 0xFFD46067 && check != 0) {
@@ -311,7 +274,7 @@ export class FF7 {
     await this.writeMemory(functionStart, writer.toBuffer(), DataType.buffer)
 
     // Use a random seed in case someone turned the RNG seed injection on and off
-    const randomSeed = Math.floor(Math.random() * 0x7FFF)
+    const randomSeed = this.getRandomSeed();
     await this.writeMemory(this.battleRNGSeedAddr, this.currentRNGSeed || randomSeed, DataType.int);
 
     // Disable write protection for the RNG Seed function memory area
