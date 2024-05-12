@@ -98,6 +98,8 @@ function installDriver() {
   const driverShadersPath = path.resolve(process.cwd(), 'driver', 'shaders');
   const driverGamePath = path.resolve(state.driver.gamePath, 'AF3DN.P');
   const driverBackupPath = path.resolve(state.driver.gamePath, 'AF3DN.P.bak');
+  const configSourcePath = path.resolve(process.cwd(), 'driver', 'FFNx.toml');
+  const configDstPath = path.resolve(state.driver.gamePath, 'FFNx.toml');
 
   // If driver does not exist, alert
   if (!fs.existsSync(driverGamePath)) {
@@ -114,6 +116,11 @@ function installDriver() {
 
   fs.copyFileSync(driverGamePath, driverBackupPath);
   fs.copyFileSync(driverSourcePath, driverGamePath);
+
+  // Copy the config file if it doesn't exist
+  if (!fs.existsSync(configDstPath)) {
+    fs.copyFileSync(configSourcePath, configDstPath);
+  }
 
   // Copy all files from shaders directory to game directory
   fs.mkdirSync(driverShadersPath, {recursive: true});

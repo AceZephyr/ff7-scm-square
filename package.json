@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "build": "webpack --mode production",
-    "package": "nodegui-packer --pack ./dist && xcopy /y /e /i driver deploy\\win32\\build\\SpeedSquare\\driver ",
+    "package": "nodegui-packer --pack ./dist && xcopy /y /e /i driver deploy\\win32\\build\\SpeedSquare\\driver && xcopy /y /e /i assets\\README.txt deploy\\win32\\build\\SpeedSquare\\",
     "start": "cross-env NODE_OPTIONS=\"--openssl-legacy-provider\" webpack && qode ./dist/index.js",
     "debug": "webpack && qode --inspect ./dist/index.js",
     "test": "jest"
