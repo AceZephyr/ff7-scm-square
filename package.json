@@ -1,5 +1,5 @@
 {
-  "name": "ff7-speed-square",
+  "name": "ff7-scm-square",
   "version": "1.0.0",
   "main": "index.js",
   "author": "mav <maciej@trebacz.org>",
@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "build": "webpack --mode production",
-    "package": "nodegui-packer --pack ./dist && xcopy /y /e /i driver deploy\\win32\\build\\SpeedSquare\\driver && xcopy /y /e /i assets\\README.txt deploy\\win32\\build\\SpeedSquare\\",
+    "package": "nodegui-packer --pack ./dist && xcopy /y /e /i driver deploy\\win32\\build\\SCMSquare\\driver && xcopy /y /e /i assets\\README.txt deploy\\win32\\build\\SCMSquare\\",
     "start": "cross-env NODE_OPTIONS=\"--openssl-legacy-provider\" webpack && qode ./dist/index.js",
     "debug": "webpack && qode --inspect ./dist/index.js",
     "test": "jest"

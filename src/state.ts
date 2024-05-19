@@ -11,7 +11,9 @@ const initialStateObj = {
   rng: {
     inject: false,
     mode: RngMode.random,
-    seed: ''
+    seed: '',
+    joker: '',
+    anim: ''
   },
   driver: {
     installed: false,

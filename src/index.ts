@@ -44,6 +44,8 @@ function updateUI(win: MainWindow) {
   win.rng.setSeedRadio?.setChecked(state.rng.mode === RngMode.set);
   win.rng.setSeedInput?.setEnabled(state.rng.mode === RngMode.set);
   win.rng.setSeedInput?.setText(state.rng.seed);
+  win.rng.jokerInput?.setText(state.rng.joker);
+  win.rng.animInput?.setText(state.rng.anim);
 
   // Driver Group
   win.driver.install?.setEnabled(!state.driver.installed);
@@ -175,14 +177,20 @@ async function writeRNGSeed() {
     if (state.rng.mode === RngMode.set && state.rng.seed !== '') {
       ff7.currentRNGSeed = parseInt(state.rng.seed);
       ff7.currentRNGMode = RngMode.set;
-      await ff7.writeMemory(ff7.battleRNGSeedAddr, parseInt(state.rng.seed), DataType.int);
-      console.log("Set Seed mode active, seed:", state.rng.seed)
-    } else if (state.rng.mode === RngMode.random) {
-      const randomSeed = ff7.getRandomSeed();
-      ff7.currentRNGSeed = randomSeed;
-      ff7.currentRNGMode = RngMode.random;
-      await ff7.writeMemory(ff7.battleRNGSeedAddr, randomSeed, DataType.int);
-      console.log("Random seed mode active, seed:", randomSeed)
+      ff7.currentJokerInject = state.rng.joker !== '' ? parseInt(state.rng.joker) : 0;
+      ff7.currentAnimInject = state.rng.anim !== '' ? parseInt(state.rng.anim) : 0;
+
+      const sp1 = await ff7.readMemory(0x7BCFE0, DataType.uint);
+      if (typeof(sp1) === 'number'){
+        await ff7.writeMemory(sp1 + 0x114, ff7.currentRNGSeed, DataType.uint);
+        console.log(`Seed Addr: ${(sp1 + 0x114).toString(16)}`)
+      }
+
+      await ff7.writeMemory(0xC06748, ff7.currentJokerInject & 7, DataType.uint);
+      await ff7.writeMemory(0xC05F80, ff7.currentAnimInject & 15, DataType.uint);
+      console.log(`Seed: ${ff7.currentRNGSeed}, Joker: ${ff7.currentJokerInject}, Anim: ${ff7.currentAnimInject}`);
+      // intro skip
+      await ff7.writeMemory(0xF4F448, 1, DataType.byte);
     }
     await ff7.applyRNGSeedPatch()
   } else {
@@ -205,6 +213,12 @@ function setupListeners(win: MainWindow) {
   })
   win.rng.setSeedInput?.addEventListener('textChanged', async value => {
     state.rng.seed = value;
+  })
+  win.rng.jokerInput?.addEventListener('textChanged', async value => {
+    state.rng.joker = value;
+  })
+  win.rng.animInput?.addEventListener('textChanged', async value => {
+    state.rng.anim = value;
   })
 
   // Buttons group

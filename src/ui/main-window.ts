@@ -1,7 +1,7 @@
 import { QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
 import path from 'path'
 
-const VERSION = '1.0.0';
+const VERSION = '0.0.1';
 export const SLIDER_MAX_VALUE = 1000;
 
 export interface MainWindow {
@@ -12,6 +12,8 @@ export interface MainWindow {
     randomSeedRadio?: QRadioButton,
     setSeedRadio?: QRadioButton,
     setSeedInput?: QLineEdit,
+    jokerInput?: QLineEdit,
+    animInput?: QLineEdit
   },
   buttons: {
     load?: QPushButton,
@@ -33,7 +35,7 @@ const mainWindow: MainWindow = {
 
 function createWindow() {
   mainWindow.win = new QMainWindow();
-  mainWindow.win.setWindowTitle("FF7 SpeedSquare v" + VERSION);
+  mainWindow.win.setWindowTitle("FF7 SCMSquare v" + VERSION);
 
   mainWindow.statusbar = new QStatusBar();
   mainWindow.statusbar.setSizeGripEnabled(false);
@@ -101,6 +103,16 @@ function createInjectSeedGroup() {
   inputSetSeed.setInlineStyle("width: 70px; background-color: #fff; color: #000;");
   groupBoxLayout.addWidget(inputSetSeed);  
   mainWindow.rng.setSeedInput = inputSetSeed;
+
+  const inputJoker = new QLineEdit();
+  inputJoker.setInlineStyle("width: 70px; background-color: #fff; color: #000;");
+  groupBoxLayout.addWidget(inputJoker);
+  mainWindow.rng.jokerInput = inputJoker;
+
+  const inputAnim = new QLineEdit();
+  inputAnim.setInlineStyle("width: 70px; background-color: #fff; color: #000;");
+  groupBoxLayout.addWidget(inputAnim);
+  mainWindow.rng.animInput = inputAnim;
 }
 
 function createButtons() {

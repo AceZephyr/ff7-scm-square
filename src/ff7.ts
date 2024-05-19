@@ -28,7 +28,7 @@ export enum FF7Address {
   MenuStartDrawBusterAddr = 0x7224D7,
   MenuStartNewGameAddr = 0x7222A4,
   MenuSetIsOpenFn = 0x6CDC09,
-  StoreRngSeed = 0x7AE9B0,
+  srand = 0x7AE9B0,
   CustomStartFunction = 0x6CCDA5,
   SpeedSquareTextAddr = 0x6CCEA5,
   CurrentModule = 0xCBF9DC,
@@ -65,6 +65,8 @@ export class FF7 {
   private currentTransaction: string | null = null;
 
   public currentRNGSeed = 0;
+  public currentJokerInject = 0;
+  public currentAnimInject = 0;
   public currentRNGMode: 'none' | 'random' | 'set' = 'none';
 
   LOOP_INTERVAL_MS = 100;
@@ -215,14 +217,16 @@ export class FF7 {
     }
 
     // Store SpeedSquare text FF7-encoded in memory
-    let text = "SpeedSquare is active";
+    let text = "SCMSquare. ";
     if (this.currentRNGMode === RngMode.random) {
-      text += `. Random RNG seed: ${this.currentRNGSeed}`
+      text += `Random RNG seed: ${this.currentRNGSeed}. `
     } else if (this.currentRNGMode === RngMode.set) {
-      text += `. RNG seed injected: ${this.currentRNGSeed}`
+      text += `RNG: ${this.currentRNGSeed}. `
     } else {
-      text += ". Default RNG Seed"
+      text += "Default RNG Seed"
     }
+
+    text += `J: ${this.currentJokerInject}. A: ${this.currentAnimInject}`
 
     const encodedText = encodeText(text)
     await this.writeMemory(FF7Address.SpeedSquareTextAddr, encodedText, DataType.buffer)
@@ -259,23 +263,19 @@ export class FF7 {
     // Second custom function - write battle RNG seed when new game starts
     this.battleRNGSeedSetFn = writer.offset
     writer.writeStart()
-    writer.writeCall(FF7Address.StoreRngSeed, [2048]) // the argument here is a placeholder to be replaced at runtime
-    this.battleRNGSeedAddr = writer.offset - 12
+    // writer.writeCall(FF7Address.srand, [0x0BAD5EED]) // the argument here is a placeholder to be replaced at runtime
+    // this.battleRNGSeedAddr = writer.offset - 12
 
     // Self modifying code to disable the RNG injection after it runs once
-    writer.write(0xBF) // MOV EDI, battleRNGSeedAddr
-    writer.writeInt32(this.battleRNGSeedSetFn + 8)
-    writer.write([0xB0, 0x90]) // MOV AL, 90
-    writer.write([0xB9, 0x5, 0, 0, 0]) // MOV ECX, 05
-    writer.write(0xFC) // CLD
-    writer.write([0xF3, 0xAA]) // REP STOSB
+    // writer.write(0xBF) // MOV EDI, battleRNGSeedAddr
+    // writer.writeInt32(this.battleRNGSeedSetFn + 8)
+    // writer.write([0xB0, 0x90]) // MOV AL, 90
+    // writer.write([0xB9, 0x5, 0, 0, 0]) // MOV ECX, 05
+    // writer.write(0xFC) // CLD
+    // writer.write([0xF3, 0xAA]) // REP STOSB
     
     writer.writeReturn()
     await this.writeMemory(functionStart, writer.toBuffer(), DataType.buffer)
-
-    // Use a random seed in case someone turned the RNG seed injection on and off
-    const randomSeed = this.getRandomSeed();
-    await this.writeMemory(this.battleRNGSeedAddr, this.currentRNGSeed || randomSeed, DataType.int);
 
     // Disable write protection for the RNG Seed function memory area
     await memoryjs.virtualProtectEx(this.processObj?.handle, FF7Address.MenuStartNilFunction, 13, memoryjs.PAGE_EXECUTE_READWRITE);
