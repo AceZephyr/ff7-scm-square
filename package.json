@@ -18,7 +18,7 @@
     "@types/winreg": "^1.2.36",
     "cross-env": "^7.0.3",
     "env-paths": "^3.0.0",
-    "memoryjs": "../memoryjs",
+    "memoryjs": "^3.5.1",
     "throttle-debounce": "^5.0.0",
     "vue": "^3.2.31",
     "winreg": "^1.2.5"

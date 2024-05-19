@@ -3309,8 +3309,10 @@ memory-stream@0:
   dependencies:
     readable-stream "~1.0.26-2"
 
-memoryjs@../memoryjs:
-  version "4.0.0"
+memoryjs@^3.5.1:
+  version "3.5.1"
+  resolved "https://registry.yarnpkg.com/memoryjs/-/memoryjs-3.5.1.tgz#9156412cf18ad4ee0f6e57aa9753cc593884ff89"
+  integrity sha512-xSdgCVwjtpGr6GvC0h2gYnhno/8/cFFGa3PiDE4D3MlutWEtBO8LEYSB4sk5kfxZ2t6alHT+H76QJfWBoZWnlQ==
   dependencies:
     eslint "^8.5.0"
     eslint-config-airbnb-base "^12.1.0"
