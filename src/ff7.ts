@@ -67,6 +67,9 @@ export class FF7 {
   public currentRNGSeed = 0;
   public currentJokerInject = 0;
   public currentAnimInject = 0;
+  public currentFileMode: 'none' | 'new' | 'continue' = 'none';
+  public currentFileIdxInject = 0;
+  public currentSlotIdxinject = 0;
   public currentRNGMode: 'none' | 'random' | 'set' = 'none';
 
   LOOP_INTERVAL_MS = 100;
@@ -207,6 +210,35 @@ export class FF7 {
       }
       resolve(true);
     });
+  }
+
+  async writeAutoNewGamePatch() {
+    await this.writeMemory(0x722376, 0x722283, DataType.uint);
+  }
+
+  async writeAutoLoadPatch() {
+    let writer = new OpcodeWriter(0x60b6f3);
+
+    writer.write([0x6a, this.currentFileIdxInject]); // PUSH FILE_INDEX
+    writer.write([0x6a, 0]); // PUSH 0
+    writer.write([0xb8, 0xbc, 0x10, 0x72, 0x00]); // MOV EAX, StartMenuFileLoad
+    writer.write([0xff, 0xd0]); // CALL EAX
+    writer.write([0x83, 0xc4, 0x08]); // ADD ESP, 0x8
+
+    writer.write([0x83, 0xf8, 0]); // CMP EAX, 0
+    writer.write([0x75, 0x11]); // JNZ afterErr
+
+    writer.write([0xc7, 0x05, 0x04, 0x77, 0xdd, 0x00, 0, 0, 0, 0]); // MOV dword ptr [StartMenuMode], 0
+    writer.write([0xb8, 0xc0, 0x22, 0x72, 0x00]); // MOV EAX, 0x7222c0
+    writer.write([0xff, 0xe0]); // JMP EAX
+
+    // afterErr
+    writer.write([0xc7, 0x05, 0xd4, 0x6d, 0xdd, 0x00, this.currentSlotIdxinject, 0, 0, 0]) // MOV dword ptr [SelFileIdx], SLOT_INDEX
+    writer.write([0xb8, 0x68, 0x21, 0x72, 0x00]); // MOV EAX, 0x722168
+    writer.write([0xff, 0xe0]); // JMP EAX
+
+    await this.writeMemory(0x60b6f3, writer.toBuffer(), DataType.buffer);
+    await this.writeMemory(0x722376, 0x60b6f3, DataType.uint);
   }
   
   async writeStartScreenText() {

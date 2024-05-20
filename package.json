@@ -1,13 +1,12 @@
 {
   "name": "ff7-scm-square",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "index.js",
   "author": "acezephyr",
   "license": "MIT",
   "private": true,
   "scripts": {
     "build": "webpack --mode production",
-    "package1": "nodegui-packer --pack ./dist",
     "package": "nodegui-packer --pack ./dist && xcopy /y /e /i driver deploy\\win32\\build\\SCMSquare\\driver && xcopy /y /e /i assets\\README.txt deploy\\win32\\build\\SCMSquare\\",
     "start": "cross-env NODE_OPTIONS=\"--openssl-legacy-provider\" webpack && qode ./dist/index.js",
     "debug": "webpack && qode --inspect ./dist/index.js",

@@ -46,6 +46,8 @@ function updateUI(win: MainWindow) {
   win.rng.setSeedInput?.setText(state.rng.seed);
   win.rng.jokerInput?.setText(state.rng.joker);
   win.rng.animInput?.setText(state.rng.anim);
+  win.rng.fileNumInput?.setText(state.rng.fileNum);
+  win.rng.slotNumInput?.setText(state.rng.slotNum);
 
   // Driver Group
   win.driver.install?.setEnabled(!state.driver.installed);
@@ -174,23 +176,25 @@ function checkDriver() {
 
 async function writeRNGSeed() {
   if (state.rng.inject) {
-    if (state.rng.mode === RngMode.set && state.rng.seed !== '') {
+    if (state.rng.mode === RngMode.set && state.rng.seed?.match(/\d+/g)) {
       ff7.currentRNGSeed = parseInt(state.rng.seed);
       ff7.currentRNGMode = RngMode.set;
-      ff7.currentJokerInject = state.rng.joker !== '' ? parseInt(state.rng.joker) : 0;
-      ff7.currentAnimInject = state.rng.anim !== '' ? parseInt(state.rng.anim) : 0;
-
+      ff7.currentJokerInject = state.rng.joker?.match(/\d+/g) ? parseInt(state.rng.joker) : 0;
+      ff7.currentAnimInject = state.rng.anim?.match(/\d+/g) ? parseInt(state.rng.anim) : 0;
+      
+      // inject sysRNG state
       const sp1 = await ff7.readMemory(0x7BCFE0, DataType.uint);
       if (typeof(sp1) === 'number'){
         await ff7.writeMemory(sp1 + 0x114, ff7.currentRNGSeed, DataType.uint);
         console.log(`Seed Addr: ${(sp1 + 0x114).toString(16)}`)
       }
 
+      // inject joker
       await ff7.writeMemory(0xC06748, ff7.currentJokerInject & 7, DataType.uint);
+      // inject anim
       await ff7.writeMemory(0xC05F80, ff7.currentAnimInject & 15, DataType.uint);
       console.log(`Seed: ${ff7.currentRNGSeed}, Joker: ${ff7.currentJokerInject}, Anim: ${ff7.currentAnimInject}`);
-      // intro skip
-      await ff7.writeMemory(0xF4F448, 1, DataType.byte);
+      
     }
     await ff7.applyRNGSeedPatch()
   } else {
@@ -198,6 +202,28 @@ async function writeRNGSeed() {
     console.log("No RNG seed injected")
     await ff7.revertRNGSeedPatch()
   }
+
+  if (state.rng.fileNum?.match(/\d/g)) {
+    const fileNum = parseInt(state.rng.fileNum);
+    if (fileNum === 0) {
+      ff7.currentFileMode = 'new';
+    } else {
+      ff7.currentFileMode = 'continue';
+      ff7.currentFileIdxInject = fileNum - 1;
+      if (state.rng.slotNum?.match(/\d/g))
+        ff7.currentSlotIdxinject = parseInt(state.rng.slotNum) - 1;
+    }
+  } else {
+    ff7.currentFileMode = 'none';
+  }
+
+  // intro skip
+  await ff7.writeMemory(0xF4F448, 1, DataType.byte);
+  // load patch
+  if (ff7.currentFileMode === 'new')
+    await ff7.writeAutoNewGamePatch();
+  else if (ff7.currentFileMode === 'continue')
+    await ff7.writeAutoLoadPatch();
 }
 
 function setupListeners(win: MainWindow) {
@@ -219,6 +245,12 @@ function setupListeners(win: MainWindow) {
   })
   win.rng.animInput?.addEventListener('textChanged', async value => {
     state.rng.anim = value;
+  })
+  win.rng.fileNumInput?.addEventListener('textChanged', async value => {
+    state.rng.fileNum = value;
+  })
+  win.rng.slotNumInput?.addEventListener('textChanged', async value => {
+    state.rng.slotNum = value;
   })
 
   // Buttons group

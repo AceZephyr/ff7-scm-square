@@ -13,7 +13,9 @@ const initialStateObj = {
     mode: RngMode.random,
     seed: '',
     joker: '',
-    anim: ''
+    anim: '',
+    fileNum: '',
+    slotNum: ''
   },
   driver: {
     installed: false,

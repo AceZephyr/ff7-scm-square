@@ -1,7 +1,8 @@
-import { QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton } from '@nodegui/nodegui';
+import { QMainWindow, QIcon, QWidget, QStatusBar, QBoxLayout, QGridLayout, QLineEdit, FlexLayout, Direction, QGroupBox, QCheckBox, QRadioButton, QLabel, QSlider, Orientation, TickPosition, AlignmentFlag, QPushButton, LayoutDirection } from '@nodegui/nodegui';
 import path from 'path'
+import { isNumberObject } from 'util/types';
 
-const VERSION = '0.0.1';
+const VERSION = '0.0.2';
 export const SLIDER_MAX_VALUE = 1000;
 
 export interface MainWindow {
@@ -13,7 +14,13 @@ export interface MainWindow {
     setSeedRadio?: QRadioButton,
     setSeedInput?: QLineEdit,
     jokerInput?: QLineEdit,
-    animInput?: QLineEdit
+    animInput?: QLineEdit,
+    fileNumInput?: QLineEdit,
+    slotNumInput?: QLineEdit
+  },
+  file: {
+    fileNum?: QLineEdit,
+    slotNum?: QLineEdit
   },
   buttons: {
     load?: QPushButton,
@@ -28,6 +35,7 @@ export interface MainWindow {
 
 const mainWindow: MainWindow = {
   rng: {},
+  file: {},
   buttons: {},
   driver: {},
   statusbar: undefined,
@@ -158,11 +166,40 @@ function createDriverGroup() {
   mainWindow.driver.uninstall = uninstallButton;
 }
 
+function createLoadFileGroup() {
+  const group = new QGroupBox();
+  group.setTitle("Load File and Slot (File 0 = New Game)");
+  const groupLayout = new QBoxLayout(Direction.LeftToRight);
+  groupLayout.setSpacing(5);
+  group.setLayout(groupLayout);
+  mainWindow.rootLayout?.addWidget(group);
+  group.setInlineStyle('flex-direction: row; width: 100%;');
+
+  const inputFileLbl = new QLabel();
+  inputFileLbl.setText("File Number:");
+  groupLayout.addWidget(inputFileLbl);
+
+  const inputFileNum = new QLineEdit();
+  inputFileNum.setInlineStyle("width: 70px; background-color: #fff; color: #000;");
+  groupLayout.addWidget(inputFileNum);
+  mainWindow.rng.fileNumInput = inputFileNum;
+
+  const inputSlotLbl = new QLabel();
+  inputSlotLbl.setText("Slot Number:");
+  groupLayout.addWidget(inputSlotLbl);
+
+  const inputSlotNum = new QLineEdit();
+  inputSlotNum.setInlineStyle("width: 70px; background-color: #fff; color: #000;");
+  groupLayout.addWidget(inputSlotNum);
+  mainWindow.rng.slotNumInput = inputSlotNum;
+}
+
 export function createMainWindow() {
   createWindow();
   createRoot();
   createDriverGroup();
   createInjectSeedGroup();
+  createLoadFileGroup()
   createButtons();
 
   mainWindow.win?.show();
