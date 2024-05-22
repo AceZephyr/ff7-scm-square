@@ -14,6 +14,8 @@ const initialStateObj = {
     seed: '',
     joker: '',
     anim: '',
+    isHex: false,
+    fileAuto: false,
     fileNum: '',
     slotNum: ''
   },

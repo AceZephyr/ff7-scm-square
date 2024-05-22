@@ -15,6 +15,8 @@ export interface MainWindow {
     setSeedInput?: QLineEdit,
     jokerInput?: QLineEdit,
     animInput?: QLineEdit,
+    isHexInput?: QCheckBox,
+    fileGroupBox?: QGroupBox,
     fileNumInput?: QLineEdit,
     slotNumInput?: QLineEdit
   },
@@ -121,6 +123,11 @@ function createInjectSeedGroup() {
   inputAnim.setInlineStyle("width: 70px; background-color: #fff; color: #000;");
   groupBoxLayout.addWidget(inputAnim);
   mainWindow.rng.animInput = inputAnim;
+
+  const inputHex = new QCheckBox();
+  inputHex.setText("Hex RNG");
+  groupBoxLayout.addWidget(inputHex);
+  mainWindow.rng.isHexInput = inputHex;
 }
 
 function createButtons() {
@@ -172,8 +179,11 @@ function createLoadFileGroup() {
   const groupLayout = new QBoxLayout(Direction.LeftToRight);
   groupLayout.setSpacing(5);
   group.setLayout(groupLayout);
+  group.setCheckable(true);
+  group.setChecked(false);
   mainWindow.rootLayout?.addWidget(group);
   group.setInlineStyle('flex-direction: row; width: 100%;');
+  mainWindow.rng.fileGroupBox = group;
 
   const inputFileLbl = new QLabel();
   inputFileLbl.setText("File Number:");

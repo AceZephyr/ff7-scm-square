@@ -2,7 +2,7 @@ import { DataType } from './memoryjs-mock';
 import EventEmitter from 'events';
 import { encodeText } from './lib/fftext';
 import { OpcodeWriter } from './opcodewriter';
-import { RngMode } from './state';
+import { RngMode, state } from './state';
 import { webcrypto } from 'crypto';
 
 const memoryjs = require('memoryjs')
@@ -56,7 +56,7 @@ export class FF7 {
 
   // Battle RNG Seed memory location
   public battleRNGSeedAddr = 0;
-  
+
   // RNG Seed setting function
   private battleRNGSeedSetFn = 0;
 
@@ -212,6 +212,10 @@ export class FF7 {
     });
   }
 
+  async resetLoadPatch() {
+    await this.writeMemory(0x722376, 0x72225a, DataType.uint);
+  }
+
   async writeAutoNewGamePatch() {
     await this.writeMemory(0x722376, 0x722283, DataType.uint);
   }
@@ -240,7 +244,7 @@ export class FF7 {
     await this.writeMemory(0x60b6f3, writer.toBuffer(), DataType.buffer);
     await this.writeMemory(0x722376, 0x60b6f3, DataType.uint);
   }
-  
+
   async writeStartScreenText() {
     const check = Number(await this.readMemory(FF7Address.SpeedSquareTextAddr, DataType.uint));
     if (check !== 0xFFD46067 && check != 0) {
@@ -264,7 +268,36 @@ export class FF7 {
     await this.writeMemory(FF7Address.SpeedSquareTextAddr, encodedText, DataType.buffer)
   }
 
-  async applyPatches() {
+  async updateInject() {
+    this.currentFileMode = 'none';
+    if (state.rng.fileAuto && state.rng.fileNum?.match(/\d{1,2}/g)) {
+      const fileNum = parseInt(state.rng.fileNum);
+      if (fileNum === 0) {
+        this.currentFileMode = 'new';
+      } else if (1 <= fileNum && fileNum <= 10) {
+        this.currentFileIdxInject = fileNum - 1;
+        if (state.rng.slotNum?.match(/\d{1,2}/g)) {
+          const slotNum = parseInt(state.rng.slotNum);
+          if (1 <= slotNum && slotNum <= 15) {
+            this.currentSlotIdxinject = slotNum - 1;
+            this.currentFileMode = 'continue';
+          }
+        } else {
+          this.currentSlotIdxinject = -1;
+        }
+      }
+    }
+
+    // load patch
+    if (this.currentFileMode === 'new')
+      await this.writeAutoNewGamePatch();
+    else if (this.currentFileMode === 'continue')
+      await this.writeAutoLoadPatch();
+    else
+      await this.resetLoadPatch();
+  }
+
+  async startupInject() {
     const check = Number(await this.readMemory(FF7Address.CustomStartFunction, DataType.uint));
     if (check !== 0x83EC8B55) {
       // Write check in hex, unsigned
@@ -272,7 +305,7 @@ export class FF7 {
       return;
     }
 
-    console.log("Applying patches...")
+    console.log("Applying patches...");
 
     // Patch the MenuStartLoop function to call our 1st custom function
     let writer = new OpcodeWriter(FF7Address.MenuStartDrawBusterFn)
@@ -292,47 +325,46 @@ export class FF7 {
       await this.writeMemory(FF7Address.SpeedSquareTextAddr, encodedText, DataType.buffer)
     }
 
-    // Second custom function - write battle RNG seed when new game starts
-    this.battleRNGSeedSetFn = writer.offset
-    writer.writeStart()
-    // writer.writeCall(FF7Address.srand, [0x0BAD5EED]) // the argument here is a placeholder to be replaced at runtime
-    // this.battleRNGSeedAddr = writer.offset - 12
-
-    // Self modifying code to disable the RNG injection after it runs once
-    // writer.write(0xBF) // MOV EDI, battleRNGSeedAddr
-    // writer.writeInt32(this.battleRNGSeedSetFn + 8)
-    // writer.write([0xB0, 0x90]) // MOV AL, 90
-    // writer.write([0xB9, 0x5, 0, 0, 0]) // MOV ECX, 05
-    // writer.write(0xFC) // CLD
-    // writer.write([0xF3, 0xAA]) // REP STOSB
-    
-    writer.writeReturn()
     await this.writeMemory(functionStart, writer.toBuffer(), DataType.buffer)
 
-    // Disable write protection for the RNG Seed function memory area
-    await memoryjs.virtualProtectEx(this.processObj?.handle, FF7Address.MenuStartNilFunction, 13, memoryjs.PAGE_EXECUTE_READWRITE);
-  }
-
-  // Patch the MenuStartLoop function to call our 2st custom function
-  async applyRNGSeedPatch() {
-    if (this.battleRNGSeedSetFn === 0) {
-      console.log("RNG seed function not found, aborting...")
-      return;
+    function seedIsValid() {
+      return (state.rng.isHex && state.rng.seed?.match(/[0-9A-Fa-f]+/g) || !state.rng.isHex && state.rng.seed?.match(/\d+/g))
     }
 
-    const writer = new OpcodeWriter(FF7Address.MenuStartNilFunction) 
-    writer.writeCall(this.battleRNGSeedSetFn, [65535])
-    await this.writeMemory(FF7Address.MenuStartNilFunction, writer.toBuffer(), DataType.buffer)
-    await this.writeStartScreenText()
-  }
-  
-  // Revert the MenuStartLoop patch
-  async revertRNGSeedPatch() {
-    console.log("Reverting RNG seed patch...")
-    const writer = new OpcodeWriter(FF7Address.MenuStartNilFunction) 
-    writer.writeDummyCall(1)
-    await this.writeMemory(FF7Address.MenuStartNilFunction, writer.toBuffer(), DataType.buffer)
-    await this.writeStartScreenText()
+    function parseSeed() {
+      return parseInt(state.rng.seed, state.rng.isHex ? 16 : 10);
+    }
+
+    if (state.rng.inject) {
+      if (state.rng.mode === RngMode.set && seedIsValid()) {
+        this.currentRNGSeed = parseSeed();
+        this.currentRNGMode = RngMode.set;
+        this.currentJokerInject = state.rng.joker?.match(/\d+/g) ? parseInt(state.rng.joker) : 0;
+        this.currentAnimInject = state.rng.anim?.match(/\d+/g) ? parseInt(state.rng.anim) : 0;
+        // inject sysRNG state
+        const sp1 = await this.readMemory(0x7BCFE0, DataType.uint);
+        if (typeof (sp1) === 'number') {
+          await this.writeMemory(sp1 + 0x114, this.currentRNGSeed, DataType.uint);
+          console.log(`Seed Addr: ${(sp1 + 0x114).toString(16)}`)
+        }
+
+        // inject joker
+        await this.writeMemory(0xC06748, this.currentJokerInject & 7, DataType.uint);
+        // inject anim
+        await this.writeMemory(0xC05F80, this.currentAnimInject & 15, DataType.uint);
+        console.log(`Seed: ${this.currentRNGSeed}, Joker: ${this.currentJokerInject}, Anim: ${this.currentAnimInject}`);
+
+      }
+    } else {
+      this.currentRNGMode = RngMode.none;
+      console.log("No RNG seed injected")
+    }
+
+    // intro skip
+    await this.writeMemory(0xF4F448, 1, DataType.byte);
+
+    // write start screen text
+    await this.writeStartScreenText();
   }
 
   connect() {
@@ -344,10 +376,10 @@ export class FF7 {
           this.processObj = memoryjs.openProcess(name);
           this.gameRunning = true;
           console.log('Found FF7 executable with process name: ' + name);
-  
+
           // Patch the code (wait a bit to not crash the app when starting)
           setTimeout(async () => {
-            await this.applyPatches()
+            await this.startupInject()
             this.emitter.emit(FF7Events.Connect);
           }, this.firstCheck ? 50 : 2500);
           break;
@@ -372,10 +404,10 @@ export class FF7 {
           this.processObj = null;
           this.emitter.emit(FF7Events.Disconnect);
         }
-      } catch(e) {
+      } catch (e) {
         console.log("Error occured while trying to get the process list:", e);
       }
-    }    
+    }
 
     this.firstCheck = false;
   }
